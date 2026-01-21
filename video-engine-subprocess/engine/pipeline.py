@@ -151,5 +151,15 @@ def analyze_only(in_path: Path, out_dir_path: Path):
     in_file_name = in_path.stem
     (out_dir_path / f"{in_file_name}_analysis.json").write_text(json.dumps(analysis, indent=2), encoding = "utf-8")
 
-def run_phase():
-    print("Hello World") 
+# Using reference_generation module
+def run_phase(
+            input_path: Path,
+            out_dir: Path,
+            policy_name: str,
+            rung: str,
+            fps: float,
+            crfs: str,
+            preset: str,
+            timeout_sec: int,
+        ):
+    print("hi")

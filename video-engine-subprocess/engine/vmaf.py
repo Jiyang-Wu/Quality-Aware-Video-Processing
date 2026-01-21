@@ -1,0 +1,2 @@
+# Take two inputs: one reference frame and one target sample, and run VMAF to ensure acceptatble perceptual quality upon compression)
+# Ensure that target sample and reference video share same resoluiton, pixel format, and FPS

@@ -1,0 +1,32 @@
+{
+  "input_path": "/mnt/c/Users/38381/Desktop/jw/Quality-Aware-Video-Processing/video-engine-subprocess/engine/reference.mp4",
+  "container": {
+    "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+    "format_long_name": "QuickTime / MOV",
+    "size_bytes": 7773711,
+    "bit_rate_bps": 6218968,
+    "duration_sec": 10.0
+  },
+  "video": {
+    "codec": "h264",
+    "profile": "High",
+    "width": 1280,
+    "height": 720,
+    "pix_fmt": "yuv420p",
+    "fps": 30.0,
+    "avg_frame_rate": "30/1",
+    "r_frame_rate": "30/1",
+    "bit_rate_bps": 6215143,
+    "time_base": "1/15360",
+    "color": {
+      "color_range": null,
+      "color_space": null,
+      "color_transfer": null,
+      "color_primaries": null
+    }
+  },
+  "audio": null,
+  "notes": [
+    "No Audio Stream\n"
+  ]
+}

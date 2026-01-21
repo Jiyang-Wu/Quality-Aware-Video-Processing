@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from engine.pipeline import run_phase
+from engine.pipeline import run_phase, analyze_only
 
 
 def parse_args() -> argparse.Namespace:
