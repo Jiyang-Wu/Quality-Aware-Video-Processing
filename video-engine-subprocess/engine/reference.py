@@ -23,7 +23,7 @@ def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS:
         # Input url
         "-i", str(input_path.resolve()),
         # Output options
-        "-vf", filters[target_res][target_FPS],
+        "-vf", filters[target_res][str(target_FPS)],
         "-c:v", "libx264",
         "-crf", "10",
         "-preset", "veryslow",
@@ -48,5 +48,3 @@ def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS:
 def generate_reference(input_path: Path, output_dir: Path, target_res: str, target_FPS: int):
     exec_ffmpeg(input_path, output_dir, target_res, target_FPS)
 
-
-generate_reference()

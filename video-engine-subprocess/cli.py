@@ -27,6 +27,10 @@ def parse_args() -> argparse.Namespace:
     analyze.add_argument("--input", type=Path)
     analyze.add_argument("--out", type=Path, required=True)
 
+    reference = sub.add_parser("reference", help="Generate reference video")
+    reference.add_argument("--input", type=Path)
+    reference.add_argument("--out", type=Path)
+
     return p.parse_args()
 
 
@@ -50,6 +54,12 @@ def main() -> int:
     if args.cmd == "analyze":
         from engine.pipeline import analyze_only
         analyze_only(args.input, args.out)
+        return 0
+
+    if args.cmd == "reference":
+        from engine.reference import generate_reference
+        print("reference generation")
+        generate_reference(args.input, args.out, "720p", 30)
         return 0
 
     raise RuntimeError("unreachable")
