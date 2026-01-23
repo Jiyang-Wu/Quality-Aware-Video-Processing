@@ -51,6 +51,6 @@ def generate_reference(input_path: Path, output_dir: Path, target_res: str, targ
     exec_ffmpeg(input_path, output_dir, target_res, target_FPS, "10", "reference")
 
 
-def generate_candidate(input_path: Path, output_dir: Path, target_res: str, target_FPS: int):
-    for crf_val in candidate_crfs:
-        exec_ffmpeg(input_path, output_dir, target_res, target_FPS, crf_val, "candidate")
+def generate_distorted(input_path: Path, output_dir: Path, target_res: str, target_FPS: int, crf_vals=candidate_crfs):
+    for crf_val in crf_vals:
+        exec_ffmpeg(input_path, output_dir, target_res, target_FPS, crf_val, "distorted")

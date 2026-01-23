@@ -6,6 +6,9 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 
+from engine.generator import generate_distorted, generate_reference
+from engine.vmaf import run_vmaf
+
 def exec_ffprobe(input_path: Path):
     argv = [
         "ffprobe",
@@ -152,14 +155,24 @@ def analyze_only(in_path: Path, out_dir_path: Path):
     (out_dir_path / f"{in_file_name}_analysis.json").write_text(json.dumps(analysis, indent=2), encoding = "utf-8")
 
 # Using reference_generation module
-def run_phase(
+def run(
             input_path: Path,
             out_dir: Path,
             policy_name: str,
-            rung: str,
-            fps: float,
+            resolution: str,
+            fps: int,
             crfs: str,
-            preset: str,
-            timeout_sec: int,
+            video_name: str
         ):
-    print("hi")
+    crf_vals=crfs.split(",")
+    input = input_path.resolve()
+    out_candidate = out_dir.resolve() / "clips" / video_name
+    out_vmaf = out_dir.resolve() / "vmaf_reports" / video_name
+    Path(out_candidate).mkdir(parents=True, exist_ok=True)
+    Path(out_vmaf).mkdir(parents=True, exist_ok=True)
+    # Generate Reference
+    generate_reference(input, out_candidate, resolution, fps)
+    # Generate Distorted
+    generate_distorted(input, out_candidate, resolution, fps, crf_vals)
+    # Run VMAF
+    run_vmaf(out_candidate, out_vmaf, video_name, crf_vals)

@@ -9,19 +9,19 @@ from pathlib import Path
 from typing import Dict, Any, Tuple, Optional
 
 
-candidate_crfs = ["18", "20", "22", "24", "44"]
-def execute_vmaf(reference_path: Path, candidate_path: Path, out_dir: Path, video_name: str, crf_val: str):
-    log_path = out_dir.resolve() / f"{video_name}" / f"{video_name}_crf_{crf_val}.json"
+def execute_vmaf(reference_path: Path, distorted_path: Path, out_dir: Path, video_name: str, crf_val: str):
+    log_path = out_dir.resolve() / f"{video_name}_crf_{crf_val}.json"
     
     argv = [
         "ffmpeg",
         # Input url
-        "-i", candidate_path.resolve(),
-        "-i", reference_path.resolve(),
+        "-i", str(distorted_path.resolve()),
+        "-i", str(reference_path.resolve()),
         # Output options
         "-lavfi", f"libvmaf=log_path={log_path}:log_fmt=json",
-        "-f", "null -"
+        "-f", "null", "-"
     ]
+    print(argv)
     proc = subprocess.run(
         argv,
         text=True,
@@ -30,13 +30,13 @@ def execute_vmaf(reference_path: Path, candidate_path: Path, out_dir: Path, vide
     )
     if proc.returncode != 0:
         print(proc.stderr)
-        raise RuntimeError("reference generation failed")
+        raise RuntimeError("vmaf generation failed")
 
 
 
-def run_vmaf(parent_dir: Path, out_dir: Path, video_name: str):
-    video_dir = (parent_dir / video_name).resolve()
+def run_vmaf(parent_dir: Path, out_dir: Path, video_name: str, distorted_crfs: list):
+    video_dir = parent_dir.resolve()
     reference_path = video_dir / f"{video_name}_10_reference.mp4"
-    for crf_val in candidate_crfs:
-        candidate = video_dir / f"{video_name}_{crf_val}_candidate.mp4"
-        execute_vmaf(reference_path, candidate, out_dir, video_name, crf_val) 
+    for crf_val in distorted_crfs:
+        distorted = video_dir / f"{video_name}_{crf_val}_distorted.mp4"
+        execute_vmaf(reference_path, distorted, out_dir, video_name, crf_val) 
