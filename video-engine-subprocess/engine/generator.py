@@ -14,7 +14,9 @@ filters = {
             }
         }
 
-def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS: int):
+candidate_crfs = ["18", "20", "22", "24", "44"]
+
+def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS: int, crf_value: str, clip_type: str):
     in_file_name = input_path.stem
     argv = [
         "ffmpeg",
@@ -25,14 +27,14 @@ def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS:
         # Output options
         "-vf", filters[target_res][str(target_FPS)],
         "-c:v", "libx264",
-        "-crf", "10",
+        "-crf", crf_value,
         "-preset", "veryslow",
         "-g", "60",
         "-keyint_min", "60",
         "-sc_threshold", "0",
         "-an",
         # Output url
-        output_dir / f"{in_file_name}_reference.mp4"
+        output_dir / f"{in_file_name}_{crf_value}_{clip_type}.mp4"
     ]
     proc = subprocess.run(
         argv,
@@ -46,5 +48,9 @@ def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS:
 
 
 def generate_reference(input_path: Path, output_dir: Path, target_res: str, target_FPS: int):
-    exec_ffmpeg(input_path, output_dir, target_res, target_FPS)
+    exec_ffmpeg(input_path, output_dir, target_res, target_FPS, "10", "reference")
 
+
+def generate_candidate(input_path: Path, output_dir: Path, target_res: str, target_FPS: int):
+    for crf_val in candidate_crfs:
+        exec_ffmpeg(input_path, output_dir, target_res, target_FPS, crf_val, "candidate")

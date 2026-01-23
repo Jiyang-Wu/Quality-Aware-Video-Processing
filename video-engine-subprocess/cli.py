@@ -27,9 +27,15 @@ def parse_args() -> argparse.Namespace:
     analyze.add_argument("--input", type=Path)
     analyze.add_argument("--out", type=Path, required=True)
 
-    reference = sub.add_parser("reference", help="Generate reference video")
-    reference.add_argument("--input", type=Path)
-    reference.add_argument("--out", type=Path)
+    generator = sub.add_parser("generator", help="Generate reference video")
+    generator.add_argument("--type", type=str)
+    generator.add_argument("--input", type=Path)
+    generator.add_argument("--out", type=Path)
+
+    vmaf = sub.add_parser("vmaf", help = "Run VMAF comparison")
+    vmaf.add_argument("--parent_dir", type=Path)
+    vmaf.add_argument("--out_dir", type=Path)
+    vmaf.add_argument("--video_name", type=str)
 
     return p.parse_args()
 
@@ -56,12 +62,24 @@ def main() -> int:
         analyze_only(args.input, args.out)
         return 0
 
-    if args.cmd == "reference":
-        from engine.reference import generate_reference
-        print("reference generation")
-        generate_reference(args.input, args.out, "720p", 30)
+    if args.cmd == "generator":
+        video_name = args.input.stem
+        out_dir = args.out / f"{video_name}"
+        Path(out_dir).mkdir(parents=True, exist_ok=True)
+        if args.type == "reference":
+            from engine.generator import generate_reference
+            print("reference generation")
+            generate_reference(args.input, out_dir, "720p", 30)
+        elif args.type == "candidate":
+            from engine.generator import generate_candidate
+            print("candidates generation")
+            generate_candidate(args.input, out_dir, "720p", 30)
         return 0
 
+    if args.cmd == "vmaf":
+        from engine.vmaf import run_vmaf
+        Path(args.out_dir).mkdir(parents=True, exist_ok=True)
+        run_vmaf(args.parent_dir, args.out_dir, args.video_name)
     raise RuntimeError("unreachable")
 
 
