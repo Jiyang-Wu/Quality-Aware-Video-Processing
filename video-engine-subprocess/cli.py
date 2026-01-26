@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     analyze.add_argument("--input", type=Path)
     analyze.add_argument("--out", type=Path, required=True)
 
-    generator = sub.add_parser("generator", help="Generate reference video")
+    generator = sub.add_parser("generator", help="Generate reference or distorted video")
     generator.add_argument("--type", type=str)
     generator.add_argument("--input", type=Path)
     generator.add_argument("--out", type=Path)
