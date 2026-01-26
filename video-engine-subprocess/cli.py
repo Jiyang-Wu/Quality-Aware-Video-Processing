@@ -17,7 +17,7 @@ def parse_args() -> argparse.Namespace:
     run.add_argument("--input", type=Path, help="Input video file (e.g., input.mp4)")
     run.add_argument("--out", type=Path, required=True, help="Output directory")
     run.add_argument("--policy", choices=["quality", "balanced", "bandwidth"], default="balanced")
-    run.add_argument("--resolution", choices=["720p"], help='Target resolution like "720p"')
+    run.add_argument("--resolution", default="1280:720", help='Target resolution like "720p"')
     run.add_argument("--fps", type=int, default=30, help="Normalize fps for reference & candidates")
     run.add_argument("--crfs", type=str, default="18,20,22,24", help="Comma-separated CRF sweep")
     run.add_argument("--video_name", type=str)
@@ -39,17 +39,37 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+# TODO: write job spec to redis queue
+def create_job_spec(input: Path,
+                    out: Path,
+                    policy: str,
+                    resolution: str,
+                    fps: int,
+                    crfs: str,
+                    video_name: str):
+    job_spec = dict()
+    job_spec["video_input_path"] = input
+    job_spec["out_asset_dir"] = out
+    job_spec["policy"] = policy
+    job_spec["resolution"] = resolution
+    job_spec["fps"] = fps
+    job_spec["crfs"] = crfs
+    job_spec["video_name"] = video_name
+    job_spec["ffmpeg_filter"] = f"scale={resolution}:flags=lanczos,fps={str(fps)},format=yuv420p"
+    return job_spec
+
 def main() -> int:
     args = parse_args()
 
     if args.cmd == "run":
-        run(args.input,
-            args.out, 
-            args.policy, 
-            args.resolution, 
-            args.fps, 
-            args.crfs, 
-            args.video_name)
+        job_spec = create_job_spec(args.input,
+                                args.out, 
+                                args.policy, 
+                                args.resolution, 
+                                args.fps, 
+                                args.crfs, 
+                                args.video_name)
+        run(job_spec)
         return 0
 
     if args.cmd == "analyze":

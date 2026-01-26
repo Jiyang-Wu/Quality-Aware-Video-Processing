@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Optional
 
 from engine.generator import generate_distorted, generate_reference
-from engine.vmaf import run_vmaf
+from engine.vmaf import run_vmaf, analyze_vmaf
 
 def exec_ffprobe(input_path: Path):
     argv = [
@@ -154,25 +153,47 @@ def analyze_only(in_path: Path, out_dir_path: Path):
     in_file_name = in_path.stem
     (out_dir_path / f"{in_file_name}_analysis.json").write_text(json.dumps(analysis, indent=2), encoding = "utf-8")
 
-# Using reference_generation module
-def run(
-            input_path: Path,
-            out_dir: Path,
-            policy_name: str,
-            resolution: str,
-            fps: int,
-            crfs: str,
-            video_name: str
-        ):
+# Using modules to finish an cycle of generation
+def run(job_spec: dict):
+
+    video_input_path = job_spec["video_input_path"]
+    out_asset_dir = job_spec["out_asset_dir"] 
+    policy = job_spec["policy"] 
+    resolution = job_spec["resolution"] 
+    fps = job_spec["fps"] 
+    crfs = job_spec["crfs"] 
+    video_name = job_spec["video_name"] 
+    ffmpeg_filter = job_spec["ffmpeg_filter"] 
+
     crf_vals=crfs.split(",")
-    input = input_path.resolve()
-    out_candidate = out_dir.resolve() / "clips" / video_name
-    out_vmaf = out_dir.resolve() / "vmaf_reports" / video_name
-    Path(out_candidate).mkdir(parents=True, exist_ok=True)
-    Path(out_vmaf).mkdir(parents=True, exist_ok=True)
+    video_input_path_abs = video_input_path.resolve()
+    out_asset_dir_abs = out_asset_dir.resolve()
+    out_video_clips_abs = out_asset_dir_abs / video_name / "clips"
+    out_video_vmaf_abs = out_asset_dir_abs / video_name / "vmaf_reports"
+    Path(out_video_clips_abs).mkdir(parents=True, exist_ok=True)
+    Path(out_video_vmaf_abs).mkdir(parents=True, exist_ok=True)
+
     # Generate Reference
-    generate_reference(input, out_candidate, resolution, fps)
+    generate_reference(video_input_path_abs, out_video_clips_abs, ffmpeg_filter)
     # Generate Distorted
-    generate_distorted(input, out_candidate, resolution, fps, crf_vals)
+    generate_distorted(video_input_path_abs, out_video_clips_abs, ffmpeg_filter, crf_vals)
     # Run VMAF
-    run_vmaf(out_candidate, out_vmaf, video_name, crf_vals)
+    run_vmaf(out_video_clips_abs, out_video_vmaf_abs, video_name, crf_vals)
+
+    # Based on quality policy, select a good target
+    vmaf_report = analyze_vmaf(out_video_vmaf_abs, video_name, crf_vals)
+    print(vmaf_report)
+    final_crf = 0
+    if policy == "quality":
+        max_vmaf = 0
+        for crf, vmaf in vmaf_report.items():
+            if vmaf > max_vmaf: 
+                final_crf = crf
+                max_vmaf = vmaf
+    elif policy == "balance":
+        for crf, vmaf in vmaf_report.items():
+            if vmaf > 95 and crf > final_crf:
+                final_crf = crf
+    # elif policy_name == "bandwidth":
+    #     for crf, vmaf in vmaf_report.items():
+    print(final_crf)        

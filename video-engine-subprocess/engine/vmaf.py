@@ -40,3 +40,12 @@ def run_vmaf(parent_dir: Path, out_dir: Path, video_name: str, distorted_crfs: l
     for crf_val in distorted_crfs:
         distorted = video_dir / f"{video_name}_{crf_val}_distorted.mp4"
         execute_vmaf(reference_path, distorted, out_dir, video_name, crf_val) 
+
+def analyze_vmaf(vmaf_dir: Path, video_name: str, distorted_crfs: list):
+    crf_vmaf_vals = dict()
+    vmaf_base = vmaf_dir.resolve() 
+    for distorted_crf_val in distorted_crfs:
+        with open(vmaf_base / f"{video_name}_crf_{distorted_crf_val}.json") as f:
+            crf_report = json.load(f) 
+            crf_vmaf_vals[int(distorted_crf_val)] = crf_report["pooled_metrics"]["vmaf"]["mean"]
+    return crf_vmaf_vals

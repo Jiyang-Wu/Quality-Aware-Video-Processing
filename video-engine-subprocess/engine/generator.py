@@ -1,22 +1,17 @@
 from __future__ import annotations
 
-import json
-import shutil
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Tuple, Optional
 
 # create a sample reference for the input video under target resolution
-filters = {
-            "720p" : 
-            {
-                "30": "scale=1280:720:flags=lanczos,fps=30,format=yuv420p"
-            }
-        }
-
 candidate_crfs = ["18", "20", "22", "24", "44"]
 
-def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS: int, crf_value: str, clip_type: str):
+def exec_ffmpeg(input_path: Path, 
+                output_dir: Path, 
+                crf_value: str, 
+                clip_type: str,
+                ffmpeg_filter: str):
+
     in_file_name = input_path.stem
     argv = [
         "ffmpeg",
@@ -25,7 +20,7 @@ def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS:
         # Input url
         "-i", str(input_path.resolve()),
         # Output options
-        "-vf", filters[target_res][str(target_FPS)],
+        "-vf", ffmpeg_filter,
         "-c:v", "libx264",
         "-crf", crf_value,
         "-preset", "veryslow",
@@ -47,10 +42,15 @@ def exec_ffmpeg(input_path: Path, output_dir: Path, target_res: str, target_FPS:
         raise RuntimeError("reference generation failed")
 
 
-def generate_reference(input_path: Path, output_dir: Path, target_res: str, target_FPS: int):
-    exec_ffmpeg(input_path, output_dir, target_res, target_FPS, "10", "reference")
+def generate_reference(input_path: Path, 
+                       output_dir: Path, 
+                       ffmpeg_filter: str):
+    exec_ffmpeg(input_path, output_dir, "10", "reference", ffmpeg_filter)
 
 
-def generate_distorted(input_path: Path, output_dir: Path, target_res: str, target_FPS: int, crf_vals=candidate_crfs):
+def generate_distorted(input_path: Path, 
+                       output_dir: Path, 
+                       ffmpeg_filter: str,
+                       crf_vals=candidate_crfs):
     for crf_val in crf_vals:
-        exec_ffmpeg(input_path, output_dir, target_res, target_FPS, crf_val, "distorted")
+        exec_ffmpeg(input_path, output_dir, crf_val, "distorted", ffmpeg_filter)
