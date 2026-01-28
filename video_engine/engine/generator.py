@@ -10,8 +10,21 @@ def exec_ffmpeg(input_path: Path,
                 output_dir: Path, 
                 crf_value: str, 
                 clip_type: str,
-                ffmpeg_filter: str):
-
+                ffmpeg_filter: str,
+                codec: str):
+    #ffmpeg_filter:  f"scale={resolution}:flags=lanczos,fps={str(fps)},format=yuv420p"
+    codec_filter = "libx264"
+    preset = "veryslow"
+    if codec == "H264":
+        codec_filter = "libx264"
+        preset = "veryslow"
+    if codec == "HEVC":
+        codec_filter = "libx265"
+        preset = "veryslow"
+    if codec == "AV1":
+        codec_filter = "libsvtav1"
+        preset = "8"
+        
     in_file_name = input_path.stem
     argv = [
         "ffmpeg",
@@ -21,9 +34,9 @@ def exec_ffmpeg(input_path: Path,
         "-i", str(input_path.resolve()),
         # Output options
         "-vf", ffmpeg_filter,
-        "-c:v", "libx264",
+        "-c:v", codec_filter,
         "-crf", crf_value,
-        "-preset", "veryslow",
+        "-preset", preset,
         "-g", "60",
         "-keyint_min", "60",
         "-sc_threshold", "0",
@@ -44,13 +57,15 @@ def exec_ffmpeg(input_path: Path,
 
 def generate_reference(input_path: Path, 
                        output_dir: Path, 
-                       ffmpeg_filter: str):
-    exec_ffmpeg(input_path, output_dir, "10", "reference", ffmpeg_filter)
+                       ffmpeg_filter: str,
+                       codec: str):
+    exec_ffmpeg(input_path, output_dir, "10", "reference", ffmpeg_filter, codec)
 
 
 def generate_distorted(input_path: Path, 
                        output_dir: Path, 
                        ffmpeg_filter: str,
+                       codec: str,
                        crf_vals=candidate_crfs):
     for crf_val in crf_vals:
-        exec_ffmpeg(input_path, output_dir, crf_val, "distorted", ffmpeg_filter)
+        exec_ffmpeg(input_path, output_dir, crf_val, "distorted", ffmpeg_filter, codec)

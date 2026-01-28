@@ -8,6 +8,7 @@ from typing import Dict, Any, Optional, Callable
 from .generator import generate_distorted, generate_reference
 from .vmaf import run_vmaf, analyze_vmaf
 
+abr_res = ["1920:1080", "1280:720", "960:540", "640:360"]
 def exec_ffprobe(input_path: Path):
     argv = [
         "ffprobe",
@@ -164,6 +165,7 @@ def run(job_spec: dict, progress_callback: Callable):
     crfs = job_spec["crfs"] 
     video_name = job_spec["video_name"] 
     ffmpeg_filter = job_spec["ffmpeg_filter"] 
+    codec = job_spec["codec"]
 
     crf_vals=crfs.split(",")
     video_input_path_abs = video_input_path.resolve()
@@ -175,11 +177,11 @@ def run(job_spec: dict, progress_callback: Callable):
 
     # Generate Reference
     progress_callback("Generating reference")
-    generate_reference(video_input_path_abs, out_video_clips_abs, ffmpeg_filter)
+    generate_reference(video_input_path_abs, out_video_clips_abs, ffmpeg_filter, codec)
 
     # Generate Distorted
     progress_callback("Generating distorted")
-    generate_distorted(video_input_path_abs, out_video_clips_abs, ffmpeg_filter, crf_vals)
+    generate_distorted(video_input_path_abs, out_video_clips_abs, ffmpeg_filter, codec, crf_vals)
 
     # Run VMAF
     progress_callback("Running VMAF comparison")
@@ -209,3 +211,65 @@ def run(job_spec: dict, progress_callback: Callable):
     final_video_url = out_video_clips_abs / f"{video_name}_{str(final_crf)}_distorted.mp4"
     res["final_video_url"] = str(final_video_url)
     return res
+
+
+
+def run_abr(job_spec: dict, progress_callback: Callable):
+
+    video_input_path = job_spec["video_input_path"]
+    out_asset_dir = job_spec["out_asset_dir"] 
+    policy = job_spec["policy"] 
+    fps = job_spec["fps"] 
+    crfs = job_spec["crfs"] 
+    video_name = job_spec["video_name"] 
+    ffmpeg_filter = job_spec["ffmpeg_filter"] 
+    codec = job_spec["codec"]
+
+    crf_vals=crfs.split(",")
+    video_input_path_abs = video_input_path.resolve()
+    out_asset_dir_abs = out_asset_dir.resolve()
+
+    for res in abr_res:
+
+        out_video_clips_abs = out_asset_dir_abs / video_name / "clips" / res
+        out_video_vmaf_abs = out_asset_dir_abs / video_name / "vmaf_reports" / res
+        Path(out_video_clips_abs).mkdir(parents=True, exist_ok=True)
+        Path(out_video_vmaf_abs).mkdir(parents=True, exist_ok=True)
+
+        # Generate Reference
+        progress_callback("Generating reference")
+        generate_reference(video_input_path_abs, out_video_clips_abs, ffmpeg_filter, codec)
+
+        # Generate Distorted
+        progress_callback("Generating distorted")
+        generate_distorted(video_input_path_abs, out_video_clips_abs, ffmpeg_filter, codec, crf_vals)
+
+        # Run VMAF
+        progress_callback("Running VMAF comparison")
+        run_vmaf(out_video_clips_abs, out_video_vmaf_abs, video_name, crf_vals)
+
+    # Based on quality policy, select a good target
+    vmaf_report = analyze_vmaf(out_video_vmaf_abs, video_name, crf_vals)
+    print(vmaf_report)
+    final_crf = 0
+    if policy == "quality":
+        print("examing quality candidates")
+        max_vmaf = 0
+        for crf, vmaf in vmaf_report.items():
+            if vmaf > max_vmaf: 
+                final_crf = crf
+                max_vmaf = vmaf
+    elif policy == "balanced":
+        print("examing balanced candidates")
+        for crf, vmaf in vmaf_report.items():
+            if vmaf > 95 and crf > final_crf:
+                final_crf = crf
+    # elif policy_name == "bandwidth":
+    #     for crf, vmaf in vmaf_report.items():
+    print(final_crf)
+    res = dict()
+    res["final_crf"] = final_crf
+    final_video_url = out_video_clips_abs / f"{video_name}_{str(final_crf)}_distorted.mp4"
+    res["final_video_url"] = str(final_video_url)
+    return res
+

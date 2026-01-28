@@ -1,5 +1,5 @@
 from .celery_app import app
-from .engine.pipeline import run
+from .engine.pipeline import run, run_abr
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -13,7 +13,11 @@ def process_job_task(self, spec: dict) -> dict:
         progress = {"step": step}
         self.update_state(state = "PROGRESS", meta = progress)
 
+    res = None
     progress_callback("Starting")
-    res = run(spec, progress_callback)
+    if spec["abr"]:
+       res = run_abr(spec, progress_callback) 
+    else:
+        res = run(spec, progress_callback)
     progress_callback("Done")
     return res

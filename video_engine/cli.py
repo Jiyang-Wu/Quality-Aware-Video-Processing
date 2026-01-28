@@ -21,11 +21,13 @@ def parse_args() -> argparse.Namespace:
     run = sub.add_parser("run", help="Run Phase 1 pipeline on a single rung (e.g., 720p).")
     run.add_argument("--input", type=Path, help="Input video file (e.g., input.mp4)")
     run.add_argument("--out", type=Path, required=True, help="Output directory")
+    run.add_argument("--codec", choices=["HEVC", "H264", "AV1"], default="H264", help="chooce the desired codec")
     run.add_argument("--policy", choices=["quality", "balanced", "bandwidth"], default="balanced")
     run.add_argument("--resolution", default="1280:720", help='Target resolution like "720p"')
     run.add_argument("--fps", type=int, default=30, help="Normalize fps for reference & candidates")
     run.add_argument("--crfs", type=str, default="18,20,22,24", help="Comma-separated CRF sweep")
     run.add_argument("--video_name", type=str)
+    run.add_argument("--abr", type=bool, default=False, help="enabling ABR or not")
 
     analyze = sub.add_parser("analyze", help="Probe input and output analysis.json")
     analyze.add_argument("--input", type=Path)
@@ -49,18 +51,22 @@ def create_job_spec(input: Path,
                     out: Path,
                     policy: str,
                     resolution: str,
+                    codec: str,
                     fps: int,
                     crfs: str,
-                    video_name: str):
+                    video_name: str,
+                    abr: bool):
     job_spec = dict()
     job_spec["video_input_path"] = str(input.resolve())
     job_spec["out_asset_dir"] = str(out.resolve())
     job_spec["policy"] = policy
+    job_spec["codec"] = codec
     job_spec["resolution"] = resolution
     job_spec["fps"] = fps
     job_spec["crfs"] = crfs
     job_spec["video_name"] = video_name
     job_spec["ffmpeg_filter"] = f"scale={resolution}:flags=lanczos,fps={str(fps)},format=yuv420p"
+    job_spec["abr"] = abr
     return job_spec
 
 def main() -> int:
@@ -72,9 +78,11 @@ def main() -> int:
                                 args.out,
                                 args.policy,
                                 args.resolution,
+                                args.codec,
                                 args.fps,
                                 args.crfs,
-                                args.video_name)
+                                args.video_name,
+                                args.abr)
         res = process_job_task.delay(job_spec)
         print("task_id:", res.id)
         last = "Starting Task"
@@ -112,28 +120,6 @@ def main() -> int:
         from engine.pipeline import analyze_only
         analyze_only(args.input, args.out)
         return 0
-
-    if args.cmd == "generator":
-        video_name = args.input.stem
-        out_dir = args.out / f"{video_name}"
-        Path(out_dir).mkdir(parents=True, exist_ok=True)
-        if args.type == "reference":
-            from engine.generator import generate_reference
-            print("reference generation")
-            generate_reference(args.input, out_dir, "720p", 30)
-        elif args.type == "distorted":
-            from engine.generator import generate_distorted
-            print("distorted generation")
-            generate_distorted(args.input, out_dir, "720p", 30)
-        return 0
-
-    if args.cmd == "vmaf":
-        from engine.vmaf import run_vmaf
-        Path(args.out_dir).mkdir(parents=True, exist_ok=True)
-        Path(args.out_dir / args.video_name).mkdir(parents=True, exist_ok=True)
-        run_vmaf(args.parent_dir, args.out_dir, args.video_name)
-        return 0
-
 
     raise RuntimeError("unreachable")
 
