@@ -4,6 +4,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 from .engine.pipeline import run 
+from time import sleep
+from celery.result import AsyncResult
+from .celery_app import app
+from .tasks import process_job_task
 
 
 def parse_args() -> argparse.Namespace:
@@ -73,6 +77,35 @@ def main() -> int:
                                 args.video_name)
         res = process_job_task.delay(job_spec)
         print("task_id:", res.id)
+        last = "Starting Task"
+        while True:
+            r = AsyncResult(res.id, app=app)
+            state = r.state
+            info = r.info
+
+            step = ""
+            if isinstance(info, dict) and "step" in info:
+                step = info["step"]
+
+            line = f"{state}"
+            if step:
+                line += f" | {step}"
+
+            if line != last:
+                print(line)
+                last = line
+
+            if state in ("SUCCESS", "FAILURE", "REVOKED"):
+                break
+
+            sleep(0.5)
+
+        if r.successful:
+            output = r.get()
+            if isinstance(output, dict):
+                print("final video clip url: ", r.get()["final_video_url"])
+        else:
+            print("Failed: ", r.result())
         return 0
 
     if args.cmd == "analyze":

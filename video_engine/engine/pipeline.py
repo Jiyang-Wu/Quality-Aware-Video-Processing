@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 from .generator import generate_distorted, generate_reference
 from .vmaf import run_vmaf, analyze_vmaf
@@ -154,7 +154,7 @@ def analyze_only(in_path: Path, out_dir_path: Path):
     (out_dir_path / f"{in_file_name}_analysis.json").write_text(json.dumps(analysis, indent=2), encoding = "utf-8")
 
 # Using modules to finish an cycle of generation
-def run(job_spec: dict):
+def run(job_spec: dict, progress_callback: Callable):
 
     video_input_path = job_spec["video_input_path"]
     out_asset_dir = job_spec["out_asset_dir"] 
@@ -174,10 +174,15 @@ def run(job_spec: dict):
     Path(out_video_vmaf_abs).mkdir(parents=True, exist_ok=True)
 
     # Generate Reference
+    progress_callback("Generating reference")
     generate_reference(video_input_path_abs, out_video_clips_abs, ffmpeg_filter)
+
     # Generate Distorted
+    progress_callback("Generating distorted")
     generate_distorted(video_input_path_abs, out_video_clips_abs, ffmpeg_filter, crf_vals)
+
     # Run VMAF
+    progress_callback("Running VMAF comparison")
     run_vmaf(out_video_clips_abs, out_video_vmaf_abs, video_name, crf_vals)
 
     # Based on quality policy, select a good target
