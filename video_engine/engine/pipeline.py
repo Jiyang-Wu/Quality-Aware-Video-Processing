@@ -5,8 +5,8 @@ import subprocess
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from engine.generator import generate_distorted, generate_reference
-from engine.vmaf import run_vmaf, analyze_vmaf
+from .generator import generate_distorted, generate_reference
+from .vmaf import run_vmaf, analyze_vmaf
 
 def exec_ffprobe(input_path: Path):
     argv = [
@@ -185,15 +185,22 @@ def run(job_spec: dict):
     print(vmaf_report)
     final_crf = 0
     if policy == "quality":
+        print("examing quality candidates")
         max_vmaf = 0
         for crf, vmaf in vmaf_report.items():
             if vmaf > max_vmaf: 
                 final_crf = crf
                 max_vmaf = vmaf
-    elif policy == "balance":
+    elif policy == "balanced":
+        print("examing balanced candidates")
         for crf, vmaf in vmaf_report.items():
             if vmaf > 95 and crf > final_crf:
                 final_crf = crf
     # elif policy_name == "bandwidth":
     #     for crf, vmaf in vmaf_report.items():
-    print(final_crf)        
+    print(final_crf)
+    res = dict()
+    res["final_crf"] = final_crf
+    final_video_url = out_video_clips_abs / f"{video_name}_{str(final_crf)}_distorted.mp4"
+    res["final_video_url"] = str(final_video_url)
+    return res

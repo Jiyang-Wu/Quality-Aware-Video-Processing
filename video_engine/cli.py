@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from engine.pipeline import run 
+from .engine.pipeline import run 
 
 
 def parse_args() -> argparse.Namespace:
@@ -13,6 +13,7 @@ def parse_args() -> argparse.Namespace:
     )
     sub = p.add_subparsers(dest="cmd", required=True)
 
+    # run --input ../v/bunny30.mp4 --out ../assets --policy balanced --resolution 1280:720 --fps 30 --crfs 18,20,22,24 --video_name bunny30
     run = sub.add_parser("run", help="Run Phase 1 pipeline on a single rung (e.g., 720p).")
     run.add_argument("--input", type=Path, help="Input video file (e.g., input.mp4)")
     run.add_argument("--out", type=Path, required=True, help="Output directory")
@@ -48,8 +49,8 @@ def create_job_spec(input: Path,
                     crfs: str,
                     video_name: str):
     job_spec = dict()
-    job_spec["video_input_path"] = input
-    job_spec["out_asset_dir"] = out
+    job_spec["video_input_path"] = str(input.resolve())
+    job_spec["out_asset_dir"] = str(out.resolve())
     job_spec["policy"] = policy
     job_spec["resolution"] = resolution
     job_spec["fps"] = fps
@@ -62,14 +63,16 @@ def main() -> int:
     args = parse_args()
 
     if args.cmd == "run":
+        from .tasks import process_job_task
         job_spec = create_job_spec(args.input,
-                                args.out, 
-                                args.policy, 
-                                args.resolution, 
-                                args.fps, 
-                                args.crfs, 
+                                args.out,
+                                args.policy,
+                                args.resolution,
+                                args.fps,
+                                args.crfs,
                                 args.video_name)
-        run(job_spec)
+        res = process_job_task.delay(job_spec)
+        print("task_id:", res.id)
         return 0
 
     if args.cmd == "analyze":

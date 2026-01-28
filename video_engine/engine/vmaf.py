@@ -3,11 +3,8 @@
 from __future__ import annotations
 
 import json
-import shutil
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Tuple, Optional
-
 
 def execute_vmaf(reference_path: Path, distorted_path: Path, out_dir: Path, video_name: str, crf_val: str):
     log_path = out_dir.resolve() / f"{video_name}_crf_{crf_val}.json"
@@ -47,5 +44,5 @@ def analyze_vmaf(vmaf_dir: Path, video_name: str, distorted_crfs: list):
     for distorted_crf_val in distorted_crfs:
         with open(vmaf_base / f"{video_name}_crf_{distorted_crf_val}.json") as f:
             crf_report = json.load(f) 
-            crf_vmaf_vals[int(distorted_crf_val)] = crf_report["pooled_metrics"]["vmaf"]["mean"]
+            crf_vmaf_vals[int(distorted_crf_val)] = float(crf_report["pooled_metrics"]["vmaf"]["mean"])
     return crf_vmaf_vals
