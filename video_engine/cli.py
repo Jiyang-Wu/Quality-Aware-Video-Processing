@@ -111,7 +111,7 @@ def main() -> int:
         if r.successful:
             output = r.get()
             if isinstance(output, dict):
-                print("final video clip url: ", r.get()["final_video_url"])
+                print(output)
         else:
             print("Failed: ", r.result())
         return 0

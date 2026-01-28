@@ -83,5 +83,5 @@ def parse_bitrates(clips_dir: Path, video_name: str, distorted_crfs: list):
         size_bytes = clip_path.stat().st_size
         bitrate_kbps = (size_bytes * 8) / duration / 1000.0
 
-        bitrates[distorted_crf_val] = int(bitrate_kbps)
+        bitrates[int(distorted_crf_val)] = bitrate_kbps
     return bitrates

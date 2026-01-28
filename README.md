@@ -38,6 +38,6 @@ docker run --rm -p 6379:6379 redis:7
 
 celery -A video_engine.celery_app worker -l INFO
 
-python3 -m video_engine.cli run --input v/bunny60.mp4 --out assets --policy balanced --resolution 1280:720 --fps 30 --crfs 18,20,22,24 --video_name bunny60
+python3 -m video_engine.cli run --input v/bunny60.mp4 --out assets --policy balanced --resolution 1280:720 --fps 30 --crfs 18,20,22,24 --video_name bunny60 --abr True
 
 ```

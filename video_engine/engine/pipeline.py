@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 
 from .generator import generate_distorted, generate_reference
 from .vmaf import run_vmaf, analyze_vmaf, parse_bitrates
@@ -203,8 +203,11 @@ def run(job_spec: dict, progress_callback: Callable):
         for crf, vmaf in vmaf_report.items():
             if vmaf > 95 and crf > final_crf:
                 final_crf = crf
-    # elif policy_name == "bandwidth":
-    #     for crf, vmaf in vmaf_report.items():
+    elif policy == "bandwidth":
+        print("examing bandwidth candidates")
+        for crf, vmaf in vmaf_report.items():
+            if vmaf > 90 and crf > final_crf:
+                final_crf = crf
     print(final_crf)
     res = dict()
     res["final_crf"] = final_crf
@@ -229,7 +232,7 @@ def run_abr(job_spec: dict, progress_callback: Callable):
     video_input_path_abs = video_input_path.resolve()
     out_asset_dir_abs = out_asset_dir.resolve()
 
-    ladder_candidates = []
+    ladder_candidates = dict()
 
     for res in abr_res:
 
@@ -254,11 +257,89 @@ def run_abr(job_spec: dict, progress_callback: Callable):
         run_vmaf(out_video_clips_abs, out_video_vmaf_abs, video_name, crf_vals)
 
         # Based on quality policy, select a good target
+        progress_callback("Retrieving reports")
         vmaf_report = analyze_vmaf(out_video_vmaf_abs, video_name, crf_vals)
         bitrates = parse_bitrates(out_video_clips_abs, video_name, crf_vals)
 
         print(vmaf_report)
         print(bitrates)
 
-    return {"final_video_url": "haha"}
+        curr_ladder_candidates = []
 
+        for crf_val in crf_vals:
+            crf_val = int(crf_val)
+            curr = dict()
+            curr["resolution"] = int(res_name)
+            curr["crf_val"] = crf_val
+            curr["vmaf"] = vmaf_report[crf_val]
+            curr["bitrate_kbps"] = bitrates[crf_val]
+            curr["video_url"] = str(out_video_clips_abs / f"{video_name}_{crf_val}_distorted.mp4")
+            curr_ladder_candidates.append(curr)
+
+        # Ensuring each candiate value dominates
+        progress_callback("Constructing ABR Ladder")
+        pareto_frontier = []
+        max_vmaf = float("-inf")
+        for candidate in sorted(curr_ladder_candidates,
+                                key=lambda candidate: (candidate["bitrate_kbps"], -candidate["vmaf"])):
+            if candidate["vmaf"] > max_vmaf:
+                pareto_frontier.append(candidate)
+                max_vmaf = candidate["vmaf"] 
+        ladder_candidates[int(res_name)] = pareto_frontier
+
+    print(ladder_candidates)
+    final_ladder = construct_ladder(ladder_candidates,
+                                  policy,
+                                  1.3,
+                                  95,
+                                  90)
+
+    return final_ladder
+
+
+def construct_ladder(
+    frontiers: Dict[str, List[Dict]],
+    policy: str,
+    spacing: float = 1.3,
+    vmaf_balanced: float = 95.0,
+    vmaf_bandwidth: float = 90.0,
+) -> Dict:
+
+    res_list = sorted(frontiers.keys())
+    ladder = dict()
+    prev_bitrate = 0.0
+
+    def meets_policy(p: Dict) -> bool:
+        pol = policy.lower()
+        if pol == "quality":
+            return True
+        if pol == "balanced":
+            return p["vmaf"] >= vmaf_balanced
+        if pol == "bandwidth":
+            return p["vmaf"] >= vmaf_bandwidth
+        return True
+
+    for res in res_list:
+        f = frontiers[res]
+        if not f:
+            continue
+
+        # 1st choice: a value respecting both policy and ABR spacing
+        cand = [p for p in f if meets_policy(p) and p["bitrate_kbps"] >= prev_bitrate * spacing]
+        # 2nd choice: a value respecting policy and monotonicity
+        if not cand:
+            cand = [p for p in f if meets_policy(p) and p["bitrate_kbps"] > prev_bitrate]
+        # 3rd choice: a value respecting ABR spacing
+        if not cand:
+            cand = [p for p in f if p["bitrate_kbps"] >= prev_bitrate * spacing]
+        # 4th choice: a value respecting monotonicity
+        if not cand:
+            cand = [p for p in f if p["bitrate_kbps"] > prev_bitrate]
+        # 5th choice: the highest quality one
+        # Among choices, plck cheapest one
+        pick = min(cand, key=lambda p: p["bitrate_kbps"]) if cand else max(f, key=lambda p: p["bitrate_kbps"])
+
+        ladder[res] = pick
+        prev_bitrate = pick["bitrate_kbps"]
+
+    return ladder
